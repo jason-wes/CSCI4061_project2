@@ -21,6 +21,22 @@ int tokenize(char *s, strvec_t *tokens) {
     // Use the strtok() function to accomplish this
     // Add each token to the 'tokens' parameter (a string vector)
     // Return 0 on success, -1 on error
+    char *token;
+    const char delim[2] = " ";
+
+    token = strtok(s, delim);
+    // not sure if this is proper error handling. strok doesn't error
+    if(token == NULL) {
+        perror("Str not tokenized. Returned null.");
+        return -1;
+    }
+
+    while(token != NULL) {
+        strvec_add(tokens, token);
+
+        token = strtok(NULL, delim);
+    }
+
     return 0;
 }
 
