@@ -1,0 +1,24 @@
+===============================================================================================================================================================================================================================================================================================
+== Test 26: Clean up Interrupted Job
+== Run a command and suspend it, then resume it with 'fg'. Interrupt the program
+== and run 'jobs' to ensure it was removed from jobs list.
+Running test...
+Expected output is in file 'test_results/raw/swish_shell_tests-26-expected.tmp'
+Actual output is in file 'test_results/raw/swish_shell_tests-26-actual.tmp'
+Test FAILED
+== Side-by-Side Comparison ==
+== Differing lines have a character like '|' '>' or '<' in the middle
+==== EXPECT ====   ==== ACTUAL ====
+@> wc              @> wc
+@> jobs          | @> 
+0: wc (stopped)  <
+@> fg 0          <
+@> jobs          <
+@> exit          <
+== Line Differences ==
+EXPECT 2) @> jobs
+ACTUAL 2) @> 
+EXPECT 3) 0: wc (stopped)
+EXPECT 4) @> fg 0
+EXPECT 5) @> jobs
+EXPECT 6) @> exit
