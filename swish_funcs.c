@@ -32,7 +32,12 @@ int tokenize(char *s, strvec_t *tokens) {
     }
 
     while(token != NULL) {
-        strvec_add(tokens, token);
+
+        // error checking strvec_add
+        if (strvec_add(tokens, token) == -1) {
+            perror("Error adding token to strvec object");
+            return -1;
+        }
 
         token = strtok(NULL, delim);
     }

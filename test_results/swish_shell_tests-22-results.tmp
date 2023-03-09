@@ -1,0 +1,72 @@
+===============================================================================================================================================================================================================================================================================================
+== Test 22: Resume multiple stopped jobs in foreground
+== Run several interactive jobs, suspend them, then resume in the foreground and
+== complete them. Check output of jobs to verify.
+Running test...
+Expected output is in file 'test_results/raw/swish_shell_tests-22-expected.tmp'
+Actual output is in file 'test_results/raw/swish_shell_tests-22-actual.tmp'
+Test FAILED
+== Side-by-Side Comparison ==
+== Differing lines have a character like '|' '>' or '<' in the middle
+==== EXPECT ====        ==== ACTUAL ====
+@> wc                   @> wc
+@> jobs               | @> 
+0: wc (stopped)       <
+@> cat                <
+@> jobs               <
+0: wc (stopped)       <
+1: cat (stopped)      <
+@> wc -l              <
+@> jobs               <
+0: wc (stopped)       <
+1: cat (stopped)      <
+2: wc (stopped)       <
+@> fg 1               <
+this is a test        <
+this is a test        <
+of your shell program <
+of your shell program <
+@> jobs               <
+0: wc (stopped)       <
+1: wc (stopped)       <
+@> fg 0               <
+this is a test        <
+  1 4 15              <
+@> jobs               <
+0: wc (stopped)       <
+@> fg 0               <
+this is a test        <
+1                     <
+@> jobs               <
+@> exit               <
+== Line Differences ==
+EXPECT  2) @> jobs
+ACTUAL  2) @> 
+EXPECT  3) 0: wc (stopped)
+EXPECT  4) @> cat
+EXPECT  5) @> jobs
+EXPECT  6) 0: wc (stopped)
+EXPECT  7) 1: cat (stopped)
+EXPECT  8) @> wc -l
+EXPECT  9) @> jobs
+EXPECT 10) 0: wc (stopped)
+EXPECT 11) 1: cat (stopped)
+EXPECT 12) 2: wc (stopped)
+EXPECT 13) @> fg 1
+EXPECT 14) this is a test
+EXPECT 15) this is a test
+EXPECT 16) of your shell program
+EXPECT 17) of your shell program
+EXPECT 18) @> jobs
+EXPECT 19) 0: wc (stopped)
+EXPECT 20) 1: wc (stopped)
+EXPECT 21) @> fg 0
+EXPECT 22) this is a test
+EXPECT 23)   1 4 15
+EXPECT 24) @> jobs
+EXPECT 25) 0: wc (stopped)
+EXPECT 26) @> fg 0
+EXPECT 27) this is a test
+EXPECT 28) 1
+EXPECT 29) @> jobs
+EXPECT 30) @> exit

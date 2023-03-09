@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
             job_list_free(&jobs);
             return 1;
         }
+
         if (tokens.length == 0) {
             printf("%s", PROMPT);
             continue;
@@ -60,10 +61,18 @@ int main(int argc, char **argv) {
             char buf[BUFSIZ];
             getcwd(buf, BUFSIZ);
             if(buf == NULL) {
-                printf("Error getting current working directory\n");
+                perror("getcwd");
+
+                // might want to delete the following
+                strvec_clear(&tokens);
+                job_list_free(&jobs);
             }
             else {
                 printf("%s\n", buf);
+
+                // might want to delete the following
+                strvec_clear(&tokens);
+                job_list_free(&jobs);
             }
         }
 
@@ -75,16 +84,29 @@ int main(int argc, char **argv) {
             // This is available in the HOME environment variable (use getenv())
             if(strvec_get(&tokens, 1) != NULL) {
                 if(chdir(strvec_get(&tokens, 1))) {
-                    printf("chdir: No such file or directory\n");
+                    perror("chdir");
+
+                    // might want to delete the following
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
                 }
             }
             else {
                 const char* homePath = getenv("HOME");
                 if(homePath == NULL) {
-                    printf("Failed to locate HOME environment variable\n");
+                    // printf("Failed to locate HOME environment variable\n");
+                    perror("getenv");
+
+                    // might want to delete the following
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
                 }
                 if(chdir(homePath)) {
-                    printf("Faield to change directory to home\n");
+                    perror("chdir");
+
+                    // might want to delete the following
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
                 }
             }
         }
