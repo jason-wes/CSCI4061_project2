@@ -63,14 +63,14 @@ int main(int argc, char **argv) {
             if(buf == NULL) {
                 perror("getcwd");
 
-                // might want to delete the following
+                // CHECK might want to delete the following
                 strvec_clear(&tokens);
                 job_list_free(&jobs);
             }
             else {
                 printf("%s\n", buf);
 
-                // might want to delete the following
+                // CHECK might want to delete the following
                 strvec_clear(&tokens);
                 job_list_free(&jobs);
             }
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
                 if(chdir(strvec_get(&tokens, 1))) {
                     perror("chdir");
 
-                    // might want to delete the following
+                    // CHECK might want to delete the following
                     strvec_clear(&tokens);
                     job_list_free(&jobs);
                 }
@@ -97,14 +97,14 @@ int main(int argc, char **argv) {
                     // printf("Failed to locate HOME environment variable\n");
                     perror("getenv");
 
-                    // might want to delete the following
+                    // CHECK might want to delete the following
                     strvec_clear(&tokens);
                     job_list_free(&jobs);
                 }
                 if(chdir(homePath)) {
                     perror("chdir");
 
-                    // might want to delete the following
+                    // CHECK might want to delete the following
                     strvec_clear(&tokens);
                     job_list_free(&jobs);
                 }
@@ -169,6 +169,26 @@ int main(int argc, char **argv) {
             //   1. Use fork() to spawn a child process
             //   2. Call run_command() in the child process
             //   2. In the parent, use waitpid() to wait for the program to exit
+            pid_t child_pid = fork();
+
+            if (child_pid < 0) {
+                perror("Fork error");
+
+                // CHECK currently stops main loop execution, may not be desirable functionality
+                strvec_clear(&tokens);
+                job_list_free(&jobs);
+                return 1;
+
+            } else if (child_pid == 0) {
+                // child PID
+                if (run_command(&tokens) == -1) {
+                    return 1;
+                }
+
+            } else {
+                int status = 0;
+                waitpid(child_pid, &status, 0);
+            }
 
             // TODO Task 4: Set the child process as the target of signals sent to the terminal
             // via the keyboard.

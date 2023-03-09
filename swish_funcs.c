@@ -54,14 +54,22 @@ int run_command(strvec_t *tokens) {
     // won't have to use malloc.
     char* arr[MAX_ARGS];
 
-    printf("%d", tokens->length);
-    for(int i = 0; i < tokens->length; i++) {
-        printf("ATTEMPT\n");
+    int i; 
+    for(i = 0; i < tokens->length; i++) {
         arr[i] = strvec_get(tokens, i);
-        printf("%s", arr[i]);
+        if (arr[i] == NULL) {
+            // CHECK error with strvec_get
+            perror("strvec_get error");
+            return -1;
+        }
     }
-
-    execvp(strvec_get(tokens, 0), arr);
+    arr[i] = (char *) NULL;
+    
+    // error checking exec, only returns on exec failure
+    if (execvp(arr[0], arr)) {
+        perror("exec");
+        return -1;
+    }
 
     // TODO Task 3: Extend this function to perform output redirection before exec()'ing
     // Check for '<' (redirect input), '>' (redirect output), '>>' (redirect and append output)
