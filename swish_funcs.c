@@ -46,7 +46,7 @@ int tokenize(char *s, strvec_t *tokens) {
 }
 
 int run_command(strvec_t *tokens) {
-    // TODO Task 2: Execute the specified program (token 0) with the
+    // TODO(done) Task 2: Execute the specified program (token 0) with the
     // specified command-line arguments
     // THIS FUNCTION SHOULD BE CALLED FROM A CHILD OF THE MAIN SHELL PROCESS
     // Hint: Build a string array from the 'tokens' vector and pass this into execvp()
@@ -54,24 +54,114 @@ int run_command(strvec_t *tokens) {
     // won't have to use malloc.
     char* arr[MAX_ARGS];
 
+    int fd_out = -2;
+    int fd_in = -2;
     int i; 
     for(i = 0; i < tokens->length; i++) {
+
         arr[i] = strvec_get(tokens, i);
+        
+        // error checking strvec_get
         if (arr[i] == NULL) {
-            // CHECK error with strvec_get
             perror("strvec_get error");
             return -1;
-        }
+        } 
+        
+        else if (!strcmp(arr[i], "<")) {
+            char* filename = strvec_get(tokens, i+1);
+
+            // error checking strvec_get
+            if (filename == NULL) {
+                perror("strvec_get error");
+                return -1;
+            }
+
+            // Open file for reading only if it exists
+            fd_in = open(filename, O_RDONLY, S_IRUSR|S_IWUSR);
+
+            // error checking opening input file
+            if (fd_in == -1) {
+                perror("Failed to open input file");
+                return -1;
+            }
+
+            // redirect input to file and error check it
+            if (dup2(fd_in, STDIN_FILENO) == -1) {
+                perror("dup2");
+                if(close(fd_in)) {
+                    perror("error closing input file");
+                }
+                return -1;
+            }
+
+            // set ith element to NULL, array will already be filled with what we want to pass it execvp
+            arr[i] = (char *) NULL;
+        } 
+        
+        else if (!strcmp(arr[i], ">") || !strcmp(arr[i], ">>")) {
+            char* filename = strvec_get(tokens, i+1);
+
+            // error checking strvec_get
+            if (filename == NULL) {
+                perror("strvec_get error");
+                return -1;
+            }
+
+            // Checking if output redirection should be in write or append mode
+            if (!strcmp(arr[i], ">")) {
+                fd_out = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
+            } else {
+                fd_out = open(filename, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
+            }
+
+            // error checking open
+            if (fd_out == -1) {
+                perror("Failed to open output file");
+                return -1;
+            }
+
+            // redirection and dup2 error checking
+            if (dup2(fd_out, STDOUT_FILENO) == -1) {
+                perror("dup2");
+                if(close(fd_out)) {
+                    perror("error closing output file");
+                }
+                return -1;
+            }
+
+            // set ith element to NULL, array will already be filled with what we want to pass it execvp
+            arr[i] = (char *) NULL;
+        } 
+
     }
+    // set last element of array to NULL for execvp, may be redundant in some cases with redirection
     arr[i] = (char *) NULL;
     
     // error checking exec, only returns on exec failure
+    // may give more arguments than necessary in arr but will terminate at the correct spot with a NULL char*
     if (execvp(arr[0], arr)) {
         perror("exec");
+
+        // need to close open files since process didn't automatically end
+
+        // fd_out open if not equal to -2
+        if (fd_out != -2) {
+            if (close(fd_out)) {
+                perror("Failed to close output file");
+            }
+        }
+
+        // fd_in open if not equal to -2
+        if (fd_in != -2) {
+            if (close(fd_in)) {
+                perror("Failed to close output file");
+            }
+        }
+        
         return -1;
     }
 
-    // TODO Task 3: Extend this function to perform output redirection before exec()'ing
+    // TODO(done) Task 3: Extend this function to perform output redirection before exec()'ing
     // Check for '<' (redirect input), '>' (redirect output), '>>' (redirect and append output)
     // entries inside of 'tokens' (the strvec_find() function will do this for you)
     // Open the necessary file for reading (<), writing (>), or appending (>>)
