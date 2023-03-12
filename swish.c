@@ -113,6 +113,7 @@ int main(int argc, char **argv) {
 
         else if (strcmp(first_token, "exit") == 0) {
             strvec_clear(&tokens);
+            job_list_free(&jobs);
             break;
         }
 
@@ -186,8 +187,16 @@ int main(int argc, char **argv) {
                 }
 
             } else {
+                tcsetpgrp(STDIN_FILENO, child_pid);
                 int status = 0;
-                waitpid(child_pid, &status, 0);
+                waitpid(child_pid, &status, WUNTRACED);
+
+                if(WIFSTOPPED(status)) {
+                    job_list_add(&jobs, child_pid, first_token, status);
+                } // true if p stopped by signal
+
+                pid_t parent_pid = getpid();
+                tcsetpgrp(parent_pid, parent_pid);
             }
 
             // TODO Task 4: Set the child process as the target of signals sent to the terminal

@@ -52,6 +52,21 @@ int run_command(strvec_t *tokens) {
     // Hint: Build a string array from the 'tokens' vector and pass this into execvp()
     // Another Hint: You have a guarantee of the longest possible needed array, so you
     // won't have to use malloc.
+    pid_t cpid = getpid();
+    setpgid(cpid, cpid);
+
+    struct sigaction sac;
+    sac.sa_handler = SIG_DFL;
+    if (sigfillset(&sac.sa_mask) == -1) {
+        perror("sigfillset");
+        return 1;
+    }
+    sac.sa_flags = 0;
+    if (sigaction(SIGTTIN, &sac, NULL) == -1 || sigaction(SIGTTOU, &sac, NULL) == -1) {
+        perror("sigaction");
+        return 1;
+    }
+
     char* arr[MAX_ARGS];
 
     int fd_out = -2;
@@ -186,12 +201,25 @@ int resume_job(strvec_t *tokens, job_list_t *jobs, int is_foreground) {
     // 1. Look up the relevant job information (in a job_t) from the jobs list
     //    using the index supplied by the user (in tokens index 1)
     //    Feel free to use sscanf() or atoi() to convert this string to an int
+    int job_index = atoi(strvec_get(tokens, 1));
+    job_t *job = job_list_get(jobs, job_index);
     // 2. Call tcsetpgrp(STDIN_FILENO, <job_pid>) where job_pid is the job's process ID
+    tcsetpgrp(STDIN_FILENO, job->pid);
     // 3. Send the process the SIGCONT signal with the kill() system call
+    kill(job->pid, SIGCONT);
     // 4. Use the same waitpid() logic as in main -- dont' forget WUNTRACED
+    int status = 0;
+    waitpid(job->pid, &status, WUNTRACED); 
     // 5. If the job has terminated (not stopped), remove it from the 'jobs' list
+    // 
+    if(!WIFSTOPPED(status)) {
+        job_list_remove(jobs, job_index);
+        free(job);
+    } // when NOT stopped by signal (terminated?)
     // 6. Call tcsetpgrp(STDIN_FILENO, <shell_pid>). shell_pid is the *current*
     //    process's pid, since we call this function from the main shell process
+    pid_t shell_pid = getpid();
+    tcsetpgrp(STDIN_FILENO, shell_pid);
 
     // TODO Task 6: Implement the ability to resume stopped jobs in the background.
     // This really just means omitting some of the steps used to resume a job in the foreground:
