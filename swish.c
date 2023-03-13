@@ -186,8 +186,13 @@ int main(int argc, char **argv) {
                 }
 
             } else {
+                tcsetpgrp(STDIN_FILENO, child_pid);
+
                 int status = 0;
                 waitpid(child_pid, &status, 0);
+
+                pid_t ppid = getpid();
+                tcsetpgrp(STDIN_FILENO, ppid);
             }
 
             // TODO Task 4: Set the child process as the target of signals sent to the terminal
