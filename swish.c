@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
                 } // true if p stopped by signal
 
                 pid_t parent_pid = getpid();
-                tcsetpgrp(parent_pid, parent_pid);
+                tcsetpgrp(STDIN_FILENO, parent_pid);
             }
 
             // TODO Task 4: Set the child process as the target of signals sent to the terminal
