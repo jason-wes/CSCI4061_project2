@@ -52,12 +52,15 @@ int run_command(strvec_t *tokens) {
     // Hint: Build a string array from the 'tokens' vector and pass this into execvp()
     // Another Hint: You have a guarantee of the longest possible needed array, so you
     // won't have to use malloc.
+
+    // set child process to correct process group
     pid_t cpid = getpid();
     if(setpgid(cpid, cpid)) {
         perror("setpgid error");
         return 1;
     }
 
+    // child process handling SIGTTIN and SIGTTOU correctly
     struct sigaction sac;
     sac.sa_handler = SIG_DFL;
     if (sigfillset(&sac.sa_mask) == -1) {
@@ -188,7 +191,7 @@ int run_command(strvec_t *tokens) {
     // DO NOT pass redirection operators and file names to exec()'d program
     // E.g., "ls -l > out.txt" should be exec()'d with strings "ls", "-l", NULL
 
-    // TODO Task 4: You need to do two items of setup before exec()'ing
+    // TODO(done) Task 4: You need to do two items of setup before exec()'ing
     // 1. Restore the signal handlers for SIGTTOU and SIGTTIN to their defaults.
     // The code in main() within swish.c sets these handlers to the SIG_IGN value.
     // Adapt this code to use sigaction() to set the handlers to the SIG_DFL value.
@@ -205,12 +208,49 @@ int resume_job(strvec_t *tokens, job_list_t *jobs, int is_foreground) {
     // 1. Look up the relevant job information (in a job_t) from the jobs list
     //    using the index supplied by the user (in tokens index 1)
     //    Feel free to use sscanf() or atoi() to convert this string to an int
+    char* job_index_string = strvec_get(tokens, 1);
+    if (job_index_string == NULL) {
+        perror("strvec_get error");
+        return -1;
+    }
+
+    int job_index = atoi(job_index_string);
+    int jobs_length = jobs->length;
+
+    // check that jobs index is within bounds
+    if (job_index < 0 || job_index > jobs_length - 1) {
+        fprintf(stderr, "Job index out of bounds\n");
+        return -1;
+    }
+
+    job_t *job = job_list_get(jobs, job_index);
+
+    // error with jobs_list_get
+    if (job == NULL) {
+        return -1;
+    }
+
     // 2. Call tcsetpgrp(STDIN_FILENO, <job_pid>) where job_pid is the job's process ID
+    if(tcsetpgrp(STDIN_FILENO, job->pid)) {
+        perror("tcsetpgrp error");
+        return -1;
+    }
     // 3. Send the process the SIGCONT signal with the kill() system call
+    kill(job->pid, SIGCONT);
     // 4. Use the same waitpid() logic as in main -- dont' forget WUNTRACED
+    int status = 0;
+    waitpid(job->pid, &status, WUNTRACED);
     // 5. If the job has terminated (not stopped), remove it from the 'jobs' list
+    if (!WIFSTOPPED(status)) {
+        job_list_remove(jobs, job_index);
+    }
     // 6. Call tcsetpgrp(STDIN_FILENO, <shell_pid>). shell_pid is the *current*
     //    process's pid, since we call this function from the main shell process
+    pid_t ppid = getpid();
+    if(tcsetpgrp(STDIN_FILENO, ppid)) {
+        perror("tcsetpgrp error");
+        return -1;
+    }
 
     // TODO Task 6: Implement the ability to resume stopped jobs in the background.
     // This really just means omitting some of the steps used to resume a job in the foreground:

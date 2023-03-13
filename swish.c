@@ -188,6 +188,7 @@ int main(int argc, char **argv) {
                 }
 
             } else {
+                // Set keyboard input process group to child process instead of shell and error checking
                 if(tcsetpgrp(STDIN_FILENO, child_pid)) {
                     perror("tcsetpgrp() error");
 
@@ -198,8 +199,14 @@ int main(int argc, char **argv) {
                 }
 
                 int status = 0;
-                waitpid(child_pid, &status, 0);
+                waitpid(child_pid, &status, WUNTRACED);
 
+                // check if child process is stopped by a signal
+                if (WIFSTOPPED(status)) {
+                    job_list_add(&jobs, child_pid, first_token, status);
+                }
+
+                // Resetting keyboard input process group to parent process i.e. the shell and error checking
                 pid_t ppid = getpid();
                 if(tcsetpgrp(STDIN_FILENO, ppid)) {
                     perror("tcsetpgrp() error");
@@ -241,5 +248,7 @@ int main(int argc, char **argv) {
         printf("%s", PROMPT);
     }
 
+    strvec_clear(&tokens);
+    job_list_free(&jobs);
     return 0;
 }
