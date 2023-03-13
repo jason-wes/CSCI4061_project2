@@ -182,17 +182,33 @@ int main(int argc, char **argv) {
             } else if (child_pid == 0) {
                 // child PID
                 if (run_command(&tokens) == -1) {
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
                     return 1;
                 }
 
             } else {
-                tcsetpgrp(STDIN_FILENO, child_pid);
+                if(tcsetpgrp(STDIN_FILENO, child_pid)) {
+                    perror("tcsetpgrp() error");
+
+                    // CHECK currently stops main loop execution, may not be desirable functionality
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
+                    return 1;
+                }
 
                 int status = 0;
                 waitpid(child_pid, &status, 0);
 
                 pid_t ppid = getpid();
-                tcsetpgrp(STDIN_FILENO, ppid);
+                if(tcsetpgrp(STDIN_FILENO, ppid)) {
+                    perror("tcsetpgrp() error");
+
+                    // CHECK currently stops main loop execution, may not be desirable functionality
+                    strvec_clear(&tokens);
+                    job_list_free(&jobs);
+                    return 1;
+                }
             }
 
             // TODO Task 4: Set the child process as the target of signals sent to the terminal

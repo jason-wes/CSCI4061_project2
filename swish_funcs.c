@@ -53,7 +53,10 @@ int run_command(strvec_t *tokens) {
     // Another Hint: You have a guarantee of the longest possible needed array, so you
     // won't have to use malloc.
     pid_t cpid = getpid();
-    setpgid(cpid, cpid);
+    if(setpgid(cpid, cpid)) {
+        perror("setpgid error");
+        return 1;
+    }
 
     struct sigaction sac;
     sac.sa_handler = SIG_DFL;
