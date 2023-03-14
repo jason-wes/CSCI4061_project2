@@ -78,7 +78,99 @@ int run_command(strvec_t *tokens) {
 
     int fd_out = -2;
     int fd_in = -2;
-    int i; 
+
+
+    // need to look for <, >, or >> args in tokens and handle them accordingly
+    int find_index = strvec_find(tokens, "<");
+
+    if (find_index != -1) {
+        char* filename = strvec_get(tokens, find_index+1);
+
+        // error checking strvec_get
+        if (filename == NULL) {
+            perror("strvec_get error");
+            return -1;
+        }
+
+        // Open file for reading only if it exists
+        fd_in = open(filename, O_RDONLY, S_IRUSR|S_IWUSR);
+
+        // error checking opening input file
+        if (fd_in == -1) {
+            perror("Failed to open input file");
+            return -1;
+        }
+
+        // redirect input to file and error check it
+        if (dup2(fd_in, STDIN_FILENO) == -1) {
+            perror("dup2");
+            if(close(fd_in)) {
+                perror("error closing input file");
+            }
+            return -1;
+        }
+    }
+
+    find_index = strvec_find(tokens, ">");
+
+    if (find_index != -1) {
+        char* filename = strvec_get(tokens, find_index+1);
+
+        // error checking strvec_get
+        if (filename == NULL) {
+            perror("strvec_get error");
+            return -1;
+        }
+
+        fd_out = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
+
+        // error checking open
+        if (fd_out == -1) {
+            perror("Failed to open output file");
+            return -1;
+        }
+
+        // redirection and dup2 error checking
+        if (dup2(fd_out, STDOUT_FILENO) == -1) {
+            perror("dup2");
+            if(close(fd_out)) {
+                perror("error closing output file");
+            }
+            return -1;
+        }
+    }
+
+    find_index = strvec_find(tokens, ">>");
+
+    if (find_index != -1) {
+        char* filename = strvec_get(tokens, find_index+1);
+
+        // error checking strvec_get
+        if (filename == NULL) {
+            perror("strvec_get error");
+            return -1;
+        }
+
+
+        fd_out = open(filename, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
+
+        // error checking open
+        if (fd_out == -1) {
+            perror("Failed to open output file");
+            return -1;
+        }
+
+        // redirection and dup2 error checking
+        if (dup2(fd_out, STDOUT_FILENO) == -1) {
+            perror("dup2");
+            if(close(fd_out)) {
+                perror("error closing output file");
+            }
+            return -1;
+        }
+    }
+    
+    int i;
     for(i = 0; i < tokens->length; i++) {
 
         arr[i] = strvec_get(tokens, i);
@@ -89,74 +181,12 @@ int run_command(strvec_t *tokens) {
             return -1;
         } 
         
-        else if (!strcmp(arr[i], "<")) {
-            char* filename = strvec_get(tokens, i+1);
-
-            // error checking strvec_get
-            if (filename == NULL) {
-                perror("strvec_get error");
-                return -1;
-            }
-
-            // Open file for reading only if it exists
-            fd_in = open(filename, O_RDONLY, S_IRUSR|S_IWUSR);
-
-            // error checking opening input file
-            if (fd_in == -1) {
-                perror("Failed to open input file");
-                return -1;
-            }
-
-            // redirect input to file and error check it
-            if (dup2(fd_in, STDIN_FILENO) == -1) {
-                perror("dup2");
-                if(close(fd_in)) {
-                    perror("error closing input file");
-                }
-                return -1;
-            }
-
-            // set ith element to NULL, array will already be filled with what we want to pass it execvp
+        else if (!strcmp(arr[i], "<") || !strcmp(arr[i], ">") || !strcmp(arr[i], ">>")) {
+            // set last char that would be a <, >, or >> to NULL for the args array
             arr[i] = (char *) NULL;
+            break;
         } 
-        
-        else if (!strcmp(arr[i], ">") || !strcmp(arr[i], ">>")) {
-            char* filename = strvec_get(tokens, i+1);
-
-            // error checking strvec_get
-            if (filename == NULL) {
-                perror("strvec_get error");
-                return -1;
-            }
-
-            // Checking if output redirection should be in write or append mode
-            if (!strcmp(arr[i], ">")) {
-                fd_out = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
-            } else {
-                fd_out = open(filename, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
-            }
-
-            // error checking open
-            if (fd_out == -1) {
-                perror("Failed to open output file");
-                return -1;
-            }
-
-            // redirection and dup2 error checking
-            if (dup2(fd_out, STDOUT_FILENO) == -1) {
-                perror("dup2");
-                if(close(fd_out)) {
-                    perror("error closing output file");
-                }
-                return -1;
-            }
-
-            // set ith element to NULL, array will already be filled with what we want to pass it execvp
-            arr[i] = (char *) NULL;
-        } 
-
     }
-    // set last element of array to NULL for execvp, may be redundant in some cases with redirection
     arr[i] = (char *) NULL;
     
     // error checking exec, only returns on exec failure
