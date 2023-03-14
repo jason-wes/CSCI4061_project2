@@ -169,6 +169,15 @@ int main(int argc, char **argv) {
             //   1. Use fork() to spawn a child process
             //   2. Call run_command() in the child process
             //   2. In the parent, use waitpid() to wait for the program to exit
+
+            int ampersand_idx = strvec_find(&tokens, "&");
+            int ampersand_found = 0;
+
+            if (ampersand_idx != -1 && ampersand_idx == tokens.length-1) {
+                strvec_take(&tokens, (unsigned)ampersand_idx);
+                ampersand_found = 1;
+            }
+
             pid_t child_pid = fork();
 
             if (child_pid < 0) {
@@ -188,33 +197,52 @@ int main(int argc, char **argv) {
                 }
 
             } else {
-                // Set keyboard input process group to child process instead of shell and error checking
-                if(tcsetpgrp(STDIN_FILENO, child_pid)) {
-                    perror("tcsetpgrp() error");
+                if (ampersand_found) {
+                    if(job_list_add(&jobs, child_pid, first_token, JOB_BACKGROUND)) {
+                        printf("job_list_add() error\n");
 
-                    // CHECK currently stops main loop execution, may not be desirable functionality
-                    strvec_clear(&tokens);
-                    job_list_free(&jobs);
-                    return 1;
+                        // CHECK currently stops main loop execution, may not be desirable functionality                        
+                        strvec_clear(&tokens);
+                        job_list_free(&jobs);
+                        return 1;
+                    }
                 }
 
-                int status = 0;
-                waitpid(child_pid, &status, WUNTRACED);
+                else {
+                    // Set keyboard input process group to child process instead of shell and error checking
+                    if(tcsetpgrp(STDIN_FILENO, child_pid)) {
+                        perror("tcsetpgrp() error");
 
-                // check if child process is stopped by a signal
-                if (WIFSTOPPED(status)) {
-                    job_list_add(&jobs, child_pid, first_token, status);
-                }
+                        // CHECK currently stops main loop execution, may not be desirable functionality
+                        strvec_clear(&tokens);
+                        job_list_free(&jobs);
+                        return 1;
+                    }
 
-                // Resetting keyboard input process group to parent process i.e. the shell and error checking
-                pid_t ppid = getpid();
-                if(tcsetpgrp(STDIN_FILENO, ppid)) {
-                    perror("tcsetpgrp() error");
+                    int status = 0;
+                    waitpid(child_pid, &status, WUNTRACED);
 
-                    // CHECK currently stops main loop execution, may not be desirable functionality
-                    strvec_clear(&tokens);
-                    job_list_free(&jobs);
-                    return 1;
+                    // check if child process is stopped by a signal
+                    if (WIFSTOPPED(status)) {
+                        if (job_list_add(&jobs, child_pid, first_token, JOB_STOPPED)) {
+                            printf("job_list_add() error\n");
+
+                            strvec_clear(&tokens);
+                            job_list_free(&jobs);
+                            return 1;
+                        }
+                    }
+
+                    // Resetting keyboard input process group to parent process i.e. the shell and error checking
+                    pid_t ppid = getpid();
+                    if(tcsetpgrp(STDIN_FILENO, ppid)) {
+                        perror("tcsetpgrp() error");
+
+                        // CHECK currently stops main loop execution, may not be desirable functionality
+                        strvec_clear(&tokens);
+                        job_list_free(&jobs);
+                        return 1;
+                    }
                 }
             }
 
